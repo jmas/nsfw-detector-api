@@ -4,7 +4,6 @@
   "compilerOptions": {
     "noImplicitAny": false,
     "strict": false,
-    "target": "es2020",
     "types": [
       "https://www.val.town/types/valtown.d.ts"
     ],
