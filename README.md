@@ -28,6 +28,8 @@ curl -X POST \
   https://your-deno-deploy-url.deno.dev/
 ```
 
+or using JS:
+
 ```js
 const formdata = new FormData();
 formdata.append("image", fileInput.files[0], "(m=eGM68f)(mh=YGlybUU_5R6MVJfb)0.jpg");
