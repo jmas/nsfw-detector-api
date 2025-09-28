@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/denoland/deno/348900b8b79f4a434cab4c74b3bc8d4d2fa8ee74/cli/schemas/config-file.v1.json",
+  "lock": false,
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "strict": false,
+    "target": "es2020",
+    "types": [
+      "https://www.val.town/types/valtown.d.ts"
+    ],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns",
+      "deno.unstable",
+      "es2015",
+      "es2016",
+      "es2017",
+      "es2018",
+      "es2019",
+      "es2020",
+      "es2021",
+      "es2022"
+    ]
+  },
+  "lint": {
+    "files": {
+      "include": [
+        "deno:/https/esm.town/**/*"
+      ]
+    },
+    "rules": {
+      "exclude": [
+        "no-explicit-any"
+      ]
+    }
+  },
+  "node_modules_dir": false,
+  "experimental": {
+    "unstable-node-globals": true,
+    "unstable-temporal": true,
+    "unstable-worker-options": true,
+    "unstable-sloppy-imports": true
+  }
+}
