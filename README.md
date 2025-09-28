@@ -25,7 +25,7 @@ Send a POST request with form data containing an image file in the `image` field
 ```bash
 curl -X POST \
   -F "image=@/path/to/your/image.jpg" \
-  https://your-deno-deploy-url.deno.dev/
+  https://nsfw-detector.ujournal.com.ua/
 ```
 
 or using JS:
