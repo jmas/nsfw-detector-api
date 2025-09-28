@@ -8,6 +8,7 @@ A Deno Deploy application that detects NSFW (Not Safe For Work) content in image
 - **NSFW Classification**: Uses TensorFlow.js and nsfwjs for accurate content detection
 - **Multiple Categories**: Detects Porn, Sexy, and Hentai content
 - **Confidence Scoring**: Returns probability scores for each classification
+- **Image Validation**: Validates image dimensions (max 640x640) and file size
 - **CORS Enabled**: Supports cross-origin requests
 - **Error Handling**: Comprehensive error handling and validation
 - **Backend Processing**: Uses Deno-compatible image processing libraries
@@ -21,6 +22,13 @@ A Deno Deploy application that detects NSFW (Not Safe For Work) content in image
 ### Request Format
 
 Send a POST request with form data containing an image file in the `image` field.
+
+### Image Requirements
+
+- **Format**: JPEG/JPG only
+- **Dimensions**: Maximum 640x640 pixels
+- **File Size**: Between 1KB and 10MB
+- **Quality**: Must be properly compressed (not corrupted or overly compressed)
 
 ```bash
 curl -X POST \
@@ -109,6 +117,36 @@ The model can classify images into these categories:
 }
 ```
 
+### Image Validation Errors (400)
+
+#### Dimensions Too Large
+```json
+{
+  "error": "Image dimensions exceed maximum allowed size. Current: 800x600, Maximum: 640x640"
+}
+```
+
+#### File Size Too Small
+```json
+{
+  "error": "File size too small. Current: 500 bytes, Minimum: 1024 bytes"
+}
+```
+
+#### File Size Too Large
+```json
+{
+  "error": "File size too large. Current: 15728640 bytes, Maximum: 10485760 bytes"
+}
+```
+
+#### Corrupted/Invalid Compression
+```json
+{
+  "error": "File appears to be too compressed or corrupted. File size (100 bytes) is too small for image dimensions (640x640)"
+}
+```
+
 ### Server Error (500)
 ```json
 {
@@ -121,6 +159,7 @@ The model can classify images into these categories:
 
 - **Model**: Uses nsfwjs v2.4.2 with TensorFlow.js v4.15.0
 - **Image Processing**: Uses jpeg-js library to decode JPEG images and convert to tensors for nsfwjs compatibility
+- **Image Validation**: Validates dimensions (max 640x640), file size (1KB-10MB), and compression quality
 - **Model Loading**: Attempts multiple model sources for Deno Deploy compatibility
 - **Performance**: Model is loaded once and cached for subsequent requests
 - **Memory Management**: Properly disposes tensors to prevent memory leaks

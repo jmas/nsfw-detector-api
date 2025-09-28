@@ -41,30 +41,62 @@ async function loadModel() {
   return model;
 }
 
-// Convert image buffer to tensor for nsfwjs using proper image decoding
-// @ts-ignore - Promise constructor available in Deno Deploy runtime
-async function convertImageToTensor(imageBuffer: ArrayBuffer, imageType: string): Promise<any> {
-  const uint8Array = new Uint8Array(imageBuffer);
+// Validate image dimensions and file size
+function validateImageDimensions(width: number, height: number, fileSize: number): { valid: boolean; error?: string } {
+  const MAX_DIMENSION = 640;
+  const MIN_FILE_SIZE = 1024; // 1KB minimum
+  const MAX_FILE_SIZE = 0.5 * 1024 * 1024; // 0.5MB maximum
   
-  let imageData: any;
-  let width: number;
-  let height: number;
-  
-  try {
-    if (imageType.indexOf('jpeg') !== -1 || imageType.indexOf('jpg') !== -1) {
-      // Decode JPEG using jpeg-js
-      imageData = decode(uint8Array, { useTArray: true });
-      width = imageData.width;
-      height = imageData.height;
-    } else {
-      // For other formats, we'll need to implement or use different decoders
-      // For now, throw an error for unsupported formats
-      throw new Error(`Unsupported image format: ${imageType}. Please use JPEG format.`);
-    }
-  } catch (error) {
-    console.error("Error decoding image:", error);
-    throw new Error("Failed to decode image. Please ensure it's a valid JPEG file.");
+  // Check dimensions
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    return {
+      valid: false,
+      error: `Image dimensions exceed maximum allowed size. Current: ${width}x${height}, Maximum: ${MAX_DIMENSION}x${MAX_DIMENSION}`
+    };
   }
+  
+  // Check file size
+  if (fileSize < MIN_FILE_SIZE) {
+    return {
+      valid: false,
+      error: `File size too small. Current: ${fileSize} bytes, Minimum: ${MIN_FILE_SIZE} bytes`
+    };
+  }
+  
+  if (fileSize > MAX_FILE_SIZE) {
+    return {
+      valid: false,
+      error: `File size too large. Current: ${fileSize} bytes, Maximum: ${MAX_FILE_SIZE} bytes`
+    };
+  }
+  
+  // Check if file size is reasonable for the dimensions
+  const pixels = width * height;
+  const bytesPerPixel = fileSize / pixels;
+  
+  // For JPEG, expect roughly 0.5-2 bytes per pixel for reasonable compression
+  if (bytesPerPixel < 0.1) {
+    return {
+      valid: false,
+      error: `File appears to be too compressed or corrupted. File size (${fileSize} bytes) is too small for image dimensions (${width}x${height})`
+    };
+  }
+  
+  if (bytesPerPixel > 10) {
+    return {
+      valid: false,
+      error: `File appears to be uncompressed or corrupted. File size (${fileSize} bytes) is too large for image dimensions (${width}x${height})`
+    };
+  }
+  
+  return { valid: true };
+}
+
+// Convert image data to tensor for nsfwjs
+// @ts-ignore - Promise constructor available in Deno Deploy runtime
+function convertImageDataToTensor(imageData: any): any {
+  const width = imageData.width;
+  const height = imageData.height;
   
   // Convert to tensor format expected by nsfwjs
   const numChannels = 3;
@@ -140,12 +172,64 @@ async function handler(req: Request): Promise<Response> {
       );
     }
 
+    // Get image buffer and validate dimensions
+    const imageBuffer = await imageFile.arrayBuffer();
+    
+    // Decode image to get dimensions for validation
+    const uint8Array = new Uint8Array(imageBuffer);
+    let imageData: any;
+    let width: number;
+    let height: number;
+    
+    try {
+      if (imageFile.type.indexOf('jpeg') !== -1 || imageFile.type.indexOf('jpg') !== -1) {
+        // Decode JPEG using jpeg-js to get dimensions
+        imageData = decode(uint8Array, { useTArray: true });
+        width = imageData.width;
+        height = imageData.height;
+      } else {
+        return new Response(
+          JSON.stringify({ 
+            error: "Unsupported file type. Please upload a JPEG image file." 
+          }),
+          { 
+            status: 400, 
+            headers: { "Content-Type": "application/json" } 
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Error decoding image for validation:", error);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to decode image. Please ensure it's a valid JPEG file." 
+        }),
+        { 
+          status: 400, 
+          headers: { "Content-Type": "application/json" } 
+        }
+      );
+    }
+    
+    // Validate image dimensions and file size
+    const validation = validateImageDimensions(width, height, imageBuffer.byteLength);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ 
+          error: validation.error 
+        }),
+        { 
+          status: 400, 
+          headers: { "Content-Type": "application/json" } 
+        }
+      );
+    }
+
     // Load the NSFW model
     const nsfwModel = await loadModel();
     
-    // Convert the image file to a tensor that nsfwjs can process
-    const imageBuffer = await imageFile.arrayBuffer();
-    const imageTensor = await convertImageToTensor(imageBuffer, imageFile.type);
+    // Convert the image data to a tensor that nsfwjs can process
+    const imageTensor = convertImageDataToTensor(imageData);
 
     // Perform NSFW classification
     const predictions = await nsfwModel.classify(imageTensor);
