@@ -10,6 +10,7 @@
       "dom.iterable",
       "dom.asynciterable",
       "deno.ns",
+      "deno.worker",
       "deno.unstable",
       "es2015",
       "es2016",

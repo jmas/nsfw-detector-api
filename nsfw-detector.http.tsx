@@ -10,12 +10,11 @@
  * Returns JSON with NSFW classification results
  */
 
-// @ts-ignore - TensorFlow.js types not available in Deno Deploy
 import * as tf from "https://esm.sh/@tensorflow/tfjs@4.15.0";
-// @ts-ignore - nsfwjs types not available in Deno Deploy  
-import * as nsfwjs from "https://esm.sh/nsfwjs@2.4.2";
-// @ts-ignore - Image processing library
 import { decode } from "https://esm.sh/jpeg-js@0.4.4";
+import * as nsfwjs from "https://esm.sh/nsfwjs@2.4.2";
+
+tf.env().set('IS_NODE', false);
 
 // Initialize the NSFW model
 let model: any = null;
@@ -291,5 +290,4 @@ async function handler(req: Request): Promise<Response> {
   }
 }
 
-// @ts-ignore
 Deno.serve(handler);
