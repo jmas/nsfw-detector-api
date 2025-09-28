@@ -28,6 +28,22 @@ curl -X POST \
   https://your-deno-deploy-url.deno.dev/
 ```
 
+```js
+const formdata = new FormData();
+formdata.append("image", fileInput.files[0], "(m=eGM68f)(mh=YGlybUU_5R6MVJfb)0.jpg");
+
+const requestOptions = {
+  method: "POST",
+  body: formdata,
+  redirect: "follow"
+};
+
+fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
+  .then((response) => response.json())
+  .then((result) => console.log(result))
+  .catch((error) => console.error(error));
+```
+
 ### Response Format
 
 ```json
