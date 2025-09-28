@@ -1,7 +1,7 @@
 /**
  * NSFW Content Detection API
  * 
- * This Val Town script provides an HTTP endpoint for detecting NSFW content in images
+ * This Deno Deploy application provides an HTTP endpoint for detecting NSFW content in images
  * using the nsfwjs library. It accepts POST requests with image data and returns
  * classification results.
  * 
@@ -10,9 +10,9 @@
  * Returns JSON with NSFW classification results
  */
 
-// @ts-ignore - TensorFlow.js types not available in Val Town
+// @ts-ignore - TensorFlow.js types not available in Deno Deploy
 import * as tf from "https://esm.sh/@tensorflow/tfjs@4.15.0";
-// @ts-ignore - nsfwjs types not available in Val Town  
+// @ts-ignore - nsfwjs types not available in Deno Deploy  
 import * as nsfwjs from "https://esm.sh/nsfwjs@2.4.2";
 // @ts-ignore - Image processing library
 import { decode } from "https://esm.sh/jpeg-js@0.4.4";
@@ -24,7 +24,7 @@ async function loadModel() {
   if (!model) {
     console.log("Loading NSFW model...");
     try {
-      // Try loading with a different model URL that might work in Val Town
+      // Try loading with a different model URL that might work in Deno Deploy
       model = await nsfwjs.load('https://raw.githubusercontent.com/infinitered/nsfwjs/refs/heads/master/models/mobilenet_v2/model.json');
       console.log("NSFW model loaded successfully");
     } catch (error) {
@@ -42,7 +42,7 @@ async function loadModel() {
 }
 
 // Convert image buffer to tensor for nsfwjs using proper image decoding
-// @ts-ignore - Promise constructor available in Val Town runtime
+// @ts-ignore - Promise constructor available in Deno Deploy runtime
 async function convertImageToTensor(imageBuffer: ArrayBuffer, imageType: string): Promise<any> {
   const uint8Array = new Uint8Array(imageBuffer);
   
@@ -93,7 +93,7 @@ interface DetectionResponse {
   processingTime: number;
 }
 
-// @ts-ignore - Promise constructor available in Val Town runtime
+// @ts-ignore - Promise constructor available in Deno Deploy runtime
 async function handler(req: Request): Promise<Response> {
   const startTime = Date.now();
   

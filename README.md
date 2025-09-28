@@ -1,6 +1,6 @@
 # NSFW Content Detector
 
-A Val Town script that detects NSFW (Not Safe For Work) content in images using the nsfwjs library.
+A Deno Deploy application that detects NSFW (Not Safe For Work) content in images using the nsfwjs library.
 
 ## Features
 
@@ -16,7 +16,7 @@ A Val Town script that detects NSFW (Not Safe For Work) content in images using 
 
 ### API Endpoint
 
-**POST** `/nsfw-detector.http.tsx`
+**POST** `/`
 
 ### Request Format
 
@@ -25,7 +25,7 @@ Send a POST request with form data containing an image file in the `image` field
 ```bash
 curl -X POST \
   -F "image=@/path/to/your/image.jpg" \
-  https://your-val-town-url.val.run/nsfw-detector.http.tsx
+  https://your-deno-deploy-url.deno.dev/
 ```
 
 ### Response Format
@@ -103,14 +103,40 @@ The model can classify images into these categories:
 
 - **Model**: Uses nsfwjs v2.4.2 with TensorFlow.js v4.15.0
 - **Image Processing**: Uses jpeg-js library to decode JPEG images and convert to tensors for nsfwjs compatibility
-- **Model Loading**: Attempts multiple model sources for Val Town compatibility
+- **Model Loading**: Attempts multiple model sources for Deno Deploy compatibility
 - **Performance**: Model is loaded once and cached for subsequent requests
 - **Memory Management**: Properly disposes tensors to prevent memory leaks
 - **Threshold**: Content is considered NSFW if any NSFW category has probability > 0.5
 
 ## Deployment
 
-This script is designed to run on Val Town. Simply upload the `nsfw-detector.http.tsx` file to your Val Town account and it will be available as an HTTP endpoint.
+This application is designed to run on Deno Deploy. You can deploy it using the following methods:
+
+### Option 1: Deploy from GitHub
+1. Fork this repository
+2. Connect your GitHub account to [Deno Deploy](https://dash.deno.com/)
+3. Create a new project and select your forked repository
+4. Set the entry point to `nsfw-detector.http.tsx`
+5. Deploy!
+
+### Option 2: Deploy using Deno CLI
+```bash
+# Install Deno CLI if you haven't already
+curl -fsSL https://deno.land/install.sh | sh
+
+# Deploy directly from the repository
+deno deploy --project=your-project-name nsfw-detector.http.tsx
+```
+
+### Option 3: Deploy from local files
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd vt-nsfw-detector
+
+# Deploy from local files
+deno deploy --project=your-project-name nsfw-detector.http.tsx
+```
 
 ## License
 

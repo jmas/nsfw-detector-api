@@ -4,9 +4,7 @@
   "compilerOptions": {
     "noImplicitAny": false,
     "strict": false,
-    "types": [
-      "https://www.val.town/types/valtown.d.ts"
-    ],
+    "types": [],
     "lib": [
       "dom",
       "dom.iterable",
@@ -24,11 +22,6 @@
     ]
   },
   "lint": {
-    "files": {
-      "include": [
-        "deno:/https/esm.town/**/*"
-      ]
-    },
     "rules": {
       "exclude": [
         "no-explicit-any"
