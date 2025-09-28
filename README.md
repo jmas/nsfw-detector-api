@@ -140,4 +140,6 @@ deno deploy --project=your-project-name nsfw-detector.http.tsx
 
 ## License
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 This project uses the nsfwjs library for content detection. Please refer to their license terms for usage restrictions.
