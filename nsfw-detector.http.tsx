@@ -102,7 +102,7 @@ async function handler(req: Request): Promise<Response> {
     if (req.method !== "POST") {
       return new Response(
         JSON.stringify({ 
-          error: "Method not allowed. Use POST to upload images for NSFW detection." 
+          error: "Method not allowed. Use POST to upload images for NSFW detection. Visit https://github.com/jmas/nsfw-detector-api for more information." 
         }),
         { 
           status: 405, 
