@@ -208,6 +208,4 @@ async function handler(req: Request): Promise<Response> {
 }
 
 // @ts-ignore
-Deno.serve((_req) => {
-  return new Response("Hello World from Deno Deploy!");
-});
+Deno.serve(handler);
