@@ -71,23 +71,23 @@ function validateImageDimensions(width: number, height: number, fileSize: number
   }
   
   // Check if file size is reasonable for the dimensions
-  const pixels = width * height;
-  const bytesPerPixel = fileSize / pixels;
+  // const pixels = width * height;
+  // const bytesPerPixel = fileSize / pixels;
   
   // For JPEG, expect roughly 0.5-2 bytes per pixel for reasonable compression
-  if (bytesPerPixel < 0.1) {
-    return {
-      valid: false,
-      error: `File appears to be too compressed or corrupted. File size (${fileSize} bytes) is too small for image dimensions (${width}x${height})`
-    };
-  }
+  // if (bytesPerPixel < 0.1) {
+  //   return {
+  //     valid: false,
+  //     error: `File appears to be too compressed or corrupted. File size (${fileSize} bytes) is too small for image dimensions (${width}x${height})`
+  //   };
+  // }
   
-  if (bytesPerPixel > 10) {
-    return {
-      valid: false,
-      error: `File appears to be uncompressed or corrupted. File size (${fileSize} bytes) is too large for image dimensions (${width}x${height})`
-    };
-  }
+  // if (bytesPerPixel > 10) {
+  //   return {
+  //     valid: false,
+  //     error: `File appears to be uncompressed or corrupted. File size (${fileSize} bytes) is too large for image dimensions (${width}x${height})`
+  //   };
+  // }
   
   return { valid: true };
 }
