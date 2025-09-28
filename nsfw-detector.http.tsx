@@ -15,7 +15,6 @@ import * as tf from "https://esm.sh/@tensorflow/tfjs@4.15.0";
 // @ts-ignore - nsfwjs types not available in Val Town  
 import * as nsfwjs from "https://esm.sh/nsfwjs@2.4.2";
 // @ts-ignore - Image processing library
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { decode } from "https://esm.sh/jpeg-js@0.4.4";
 
 // Initialize the NSFW model
@@ -208,4 +207,7 @@ async function handler(req: Request): Promise<Response> {
   }
 }
 
-serve(handler, { port: 8000 });
+// @ts-ignore
+Deno.serve((_req) => {
+  return new Response("Hello World from Deno Deploy!");
+});
