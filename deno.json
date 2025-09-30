@@ -5,7 +5,7 @@
     "@tensorflow/tfjs": "https://esm.sh/@tensorflow/tfjs@4.15.0",
     "jpeg-js": "https://esm.sh/jpeg-js@0.4.4",
     "nsfwjs": "https://esm.sh/nsfwjs@2.4.2",
-    "string-comparisons": "npm:string-comparisons"
+    "string-comparisons": "npm:string-comparisons@0.0.20"
   },
   "compilerOptions": {
     "noImplicitAny": false,
