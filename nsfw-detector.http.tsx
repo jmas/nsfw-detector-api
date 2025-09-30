@@ -118,21 +118,34 @@ function wordToxicity(word: string, badWords: string[]): number {
   return Math.max(...scores, 0); // Maximum similarity with dictionary
 }
 
-// Calculate overall text toxicity score
+// Calculate overall text toxicity score based on toxic word count
+// Returns a score from 0 to 1 where:
+// - 0 means no toxic words found
+// - Higher values indicate more toxic content
+// - Score considers both the ratio and absolute count of toxic words
 function calculateTextToxicity(text: string, badWords: string[], threshold: number = 0): number {
   const words = extractWords(text);
   if (words.length === 0) return 0;
 
-  const wordScores = words.map(word => wordToxicity(word, badWords));
+  // Count words that meet the toxicity threshold
+  let toxicCount = 0;
+  for (const word of words) {
+    const toxicity = wordToxicity(word, badWords);
+    if (toxicity >= threshold) {
+      toxicCount++;
+    }
+  }
   
-  // Filter out words that don't meet the threshold
-  const toxicWords = wordScores.filter(score => score >= threshold);
+  // If no toxic words found, return 0
+  if (toxicCount === 0) return 0;
   
-  // If no words meet the threshold, return 0
-  if (toxicWords.length === 0) return 0;
+  // Calculate toxicity score based on ratio of toxic words to total words
+  // Multiply by a scaling factor to make the score more sensitive
+  // Cap at 1.0 to keep the score in the 0-1 range
+  const toxicRatio = toxicCount / words.length;
+  const scalingFactor = 5; // Adjust sensitivity: lower = more lenient, higher = stricter
   
-  // Return maximum toxicity found among words that meet the threshold
-  return Math.max(...toxicWords, 0);
+  return Math.min(1.0, toxicRatio * scalingFactor);
 }
 
 // Enhanced profanity checker with similarity matching (whole words only)
