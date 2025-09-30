@@ -1,14 +1,18 @@
-# NSFW Content Detector
+# NSFW Content Detector & Profanity Checker
 
-A Deno Deploy application that detects NSFW (Not Safe For Work) content in images using the nsfwjs library.
+A Deno Deploy application that detects NSFW (Not Safe For Work) content in images using the nsfwjs library and checks text for profanity using language-specific word lists.
 
 ## Features
 
-- **HTTP API Endpoint**: Accepts POST requests with JPEG image data
-- **NSFW Classification**: Uses TensorFlow.js and nsfwjs for accurate content detection
-- **Multiple Categories**: Detects Porn, Sexy, and Hentai content
+- **Dual Content Detection**: Supports both image NSFW detection and text profanity checking
+- **HTTP API Endpoint**: Accepts POST requests with JPEG image data or JSON text content
+- **NSFW Classification**: Uses TensorFlow.js and nsfwjs for accurate image content detection
+- **Profanity Detection**: Uses language-specific profanity word lists from [jmas/profanity-list](https://github.com/jmas/profanity-list)
+- **Multi-language Support**: Supports 21 languages for profanity checking
+- **Multiple Categories**: Detects Porn, Sexy, and Hentai content in images
 - **Confidence Scoring**: Returns probability scores for each classification
 - **Image Validation**: Validates image dimensions (max 640x640) and file size
+- **Text Validation**: Validates text content and language headers
 - **CORS Enabled**: Supports cross-origin requests
 - **Error Handling**: Comprehensive error handling and validation
 - **Backend Processing**: Uses Deno-compatible image processing libraries
@@ -19,7 +23,21 @@ A Deno Deploy application that detects NSFW (Not Safe For Work) content in image
 
 **POST** `/`
 
-### Request Format
+### Content Types
+
+The API supports three types of content detection based on field presence:
+
+1. **Image NSFW Detection**: Send form data with an 'image' field
+2. **Text Profanity Checking**: Send form data with a 'text' field  
+3. **Combined Detection**: Send form data with both 'image' and 'text' fields
+
+All content types support `multipart/form-data` and `application/x-www-form-urlencoded` content types.
+
+**Note**: Libraries are loaded dynamically only when needed:
+- Image processing libraries (TensorFlow.js, nsfwjs, jpeg-js) are loaded only when an image is present
+- Profanity checking is performed using simple word matching for optimal performance
+
+### Image NSFW Detection
 
 Send a POST request with form data containing an image file in the `image` field.
 
@@ -54,7 +72,134 @@ fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
   .catch((error) => console.error(error));
 ```
 
+### Text Profanity Checking
+
+Send a POST request with form data containing text content and include a `Content-Language` header.
+
+#### Request Format (multipart/form-data)
+
+```bash
+curl -X POST \
+  -H "Content-Language: en" \
+  -F "text=Your text content here" \
+  https://nsfw-detector.ujournal.com.ua/
+```
+
+#### Request Format (application/x-www-form-urlencoded)
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Content-Language: en" \
+  -d "text=Your text content here" \
+  https://nsfw-detector.ujournal.com.ua/
+```
+
+#### JavaScript Example (FormData)
+
+```js
+const formdata = new FormData();
+formdata.append("text", "Your text content to check for profanity");
+
+const requestOptions = {
+  method: "POST",
+  headers: {
+    "Content-Language": "en"
+  },
+  body: formdata
+};
+
+fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
+  .then((response) => response.json())
+  .then((result) => console.log(result))
+  .catch((error) => console.error(error));
+```
+
+#### JavaScript Example (URLSearchParams)
+
+```js
+const params = new URLSearchParams();
+params.append("text", "Your text content to check for profanity");
+
+const requestOptions = {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Content-Language": "en"
+  },
+  body: params
+};
+
+fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
+  .then((response) => response.json())
+  .then((result) => console.log(result))
+  .catch((error) => console.error(error));
+```
+
+### Combined Image and Text Detection
+
+You can check both image and text content in a single request by including both fields.
+
+#### Request Format (multipart/form-data)
+
+```bash
+curl -X POST \
+  -H "Content-Language: en" \
+  -F "image=@/path/to/image.jpg" \
+  -F "text=Your text content here" \
+  https://nsfw-detector.ujournal.com.ua/
+```
+
+#### JavaScript Example (FormData)
+
+```js
+const formdata = new FormData();
+formdata.append("image", fileInput.files[0]);
+formdata.append("text", "Your text content to check for profanity");
+
+const requestOptions = {
+  method: "POST",
+  headers: {
+    "Content-Language": "en"
+  },
+  body: formdata
+};
+
+fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
+  .then((response) => response.json())
+  .then((result) => console.log(result))
+  .catch((error) => console.error(error));
+```
+
+#### Supported Languages
+
+The API supports profanity checking for the following languages:
+
+- **en** - English
+- **es** - Spanish
+- **fi** - Finnish
+- **fr** - French
+- **hi** - Hindi
+- **hu** - Hungarian
+- **it** - Italian
+- **ja** - Japanese
+- **ko** - Korean
+- **nl** - Dutch
+- **no** - Norwegian
+- **pl** - Polish
+- **pt** - Portuguese
+- **ru** - Russian
+- **sv** - Swedish
+- **th** - Thai
+- **tr** - Turkish
+- **uk** - Ukrainian
+- **zh** - Chinese
+- **eo** - Esperanto
+- **fil** - Filipino
+
 ### Response Format
+
+#### Image NSFW Detection Response
 
 ```json
 {
@@ -74,16 +219,61 @@ fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
   ],
   "isNSFW": false,
   "confidence": 0.12,
-  "processingTime": 1250
+  "processingTime": 1250,
+  "contentType": "image"
+}
+```
+
+#### Text Profanity Checking Response
+
+```json
+{
+  "isNSFW": true,
+  "profanity": ["badword1", "badword2"],
+  "processingTime": 45,
+  "contentType": "text"
+}
+```
+
+#### Combined Detection Response
+
+```json
+{
+  "predictions": [
+    {
+      "className": "Neutral",
+      "probability": 0.85
+    },
+    {
+      "className": "Porn", 
+      "probability": 0.12
+    }
+  ],
+  "isNSFW": true,
+  "confidence": 0.12,
+  "profanity": ["badword1", "badword2"],
+  "processingTime": 1300,
+  "contentType": "both"
 }
 ```
 
 ### Response Fields
 
-- **predictions**: Array of all classification results with probabilities
-- **isNSFW**: Boolean indicating if content is considered NSFW (threshold: 0.5)
-- **confidence**: Highest probability among NSFW categories (Porn, Sexy, Hentai)
-- **processingTime**: Time taken to process the image in milliseconds
+#### Image Detection Fields
+
+- **predictions**: Array of all classification results with probabilities (only present for image requests)
+- **isNSFW**: Boolean indicating if content is considered NSFW (threshold: 0.5 for images, true if profanity detected for text)
+- **confidence**: Highest probability among NSFW categories (Porn, Sexy, Hentai) - only present for image requests
+- **profanity**: Array of detected profane words - only present for text requests
+- **processingTime**: Time taken to process the content in milliseconds
+- **contentType**: "image" for image-only requests, "text" for text-only requests, "both" for combined requests
+
+#### Combined Detection
+
+When both image and text are processed in the same request:
+- **isNSFW** is `true` if either the image is classified as NSFW OR profanity is detected in the text
+- Both **predictions** and **profanity** fields are included in the response
+- **confidence** field is included from image processing
 
 ### Classification Categories
 
@@ -99,14 +289,35 @@ The model can classify images into these categories:
 ### Method Not Allowed (405)
 ```json
 {
-  "error": "Method not allowed. Use POST to upload images for NSFW detection."
+  "error": "Method not allowed. Use POST to upload images for NSFW detection or text for profanity checking."
 }
 ```
 
-### No Image Provided (400)
+### No Valid Content Provided (400)
 ```json
 {
-  "error": "No image provided. Please include an 'image' field in your POST request."
+  "error": "No valid content provided. Please include either a 'text' field for profanity checking or an 'image' field for NSFW detection."
+}
+```
+
+### Missing Language Header (400)
+```json
+{
+  "error": "Content-Language header is required for text profanity checking."
+}
+```
+
+### Unsupported Language (400)
+```json
+{
+  "error": "Unsupported language: xx. Supported languages: en, es, fi, fr, hi, hu, it, ja, ko, nl, no, pl, pt, ru, sv, th, tr, uk, zh, eo, fil"
+}
+```
+
+### Profanity List Not Found (400)
+```json
+{
+  "error": "Profanity list not found for language: en (english)"
 }
 ```
 
@@ -157,6 +368,8 @@ The model can classify images into these categories:
 
 ## Technical Details
 
+### Image NSFW Detection
+
 - **Model**: Uses nsfwjs v2.4.2 with TensorFlow.js v4.15.0
 - **Image Processing**: Uses jpeg-js library to decode JPEG images and convert to tensors for nsfwjs compatibility
 - **Image Validation**: Validates dimensions (max 640x640), file size (1KB-10MB), and compression quality
@@ -164,6 +377,22 @@ The model can classify images into these categories:
 - **Performance**: Model is loaded once and cached for subsequent requests
 - **Memory Management**: Properly disposes tensors to prevent memory leaks
 - **Threshold**: Content is considered NSFW if any NSFW category has probability > 0.5
+
+### Text Profanity Checking
+
+- **Profanity Lists**: Uses word lists from [jmas/profanity-list](https://github.com/jmas/profanity-list) repository
+- **Language Support**: Supports 21 languages with cached word lists for performance
+- **Detection Method**: Simple substring matching with case-insensitive comparison
+- **Caching**: Profanity lists are loaded once per language and cached in memory
+- **Language Validation**: Validates language codes and throws errors for unsupported languages
+- **Performance**: Fast text processing with minimal memory footprint
+
+### Dynamic Loading & Performance
+
+- **Conditional Imports**: Image processing libraries (TensorFlow.js, nsfwjs, jpeg-js) are only loaded when an image is present
+- **Memory Efficiency**: Libraries are imported dynamically to reduce initial bundle size
+- **Combined Processing**: Both image and text can be processed in a single request for efficiency
+- **Unified Response**: Single `isNSFW` field indicates if either image OR text contains inappropriate content
 
 ## Deployment
 

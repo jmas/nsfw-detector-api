@@ -1,6 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/denoland/deno/348900b8b79f4a434cab4c74b3bc8d4d2fa8ee74/cli/schemas/config-file.v1.json",
   "lock": false,
+  "imports": {
+    "@tensorflow/tfjs": "https://esm.sh/@tensorflow/tfjs@4.15.0",
+    "jpeg-js": "https://esm.sh/jpeg-js@0.4.4",
+    "nsfwjs": "https://esm.sh/nsfwjs@2.4.2",
+    "content-checker": "npm:content-checker@1.0.0"
+  },
   "compilerOptions": {
     "noImplicitAny": false,
     "strict": false,
