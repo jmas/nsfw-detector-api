@@ -6,7 +6,7 @@
  * It accepts POST requests with image data or text content and returns classification results.
  * 
  * Profanity Detection:
- * - Uses string-similarity package (Dice coefficient/Sørensen–Dice) for fuzzy string matching
+ * - Uses string-comparisons package (Jaccard similarity) for fuzzy string matching
  * - Matches whole words only (not substrings within words)
  * - Detects profanity even with character substitutions or typos
  * - Returns both detected bad words and an overall profanity score (0-1)
@@ -22,9 +22,9 @@
 
 // Dynamic imports will be used when needed
 // tf, nsfwjs, and jpeg-js will be imported only when image processing is required
-// string-similarity is used for profanity detection with fuzzy matching
+// string-comparisons is used for profanity detection with fuzzy matching
 
-import { compareTwoStrings } from "string-similarity";
+import StringComparisons from "string-comparisons";
 
 // Initialize the NSFW model (loaded dynamically when needed)
 let model: any = null;
@@ -97,7 +97,7 @@ function extractWords(text: string): string[] {
 function wordToxicity(word: string, badWords: string[]): number {
   if (word.length === 0) return 0;
   
-  const scores = badWords.map(bw => compareTwoStrings(word, bw));
+  const scores = badWords.map(bw => StringComparisons.Jaccard.similarity(word, bw));
   return Math.max(...scores, 0); // Maximum similarity with dictionary
 }
 
@@ -119,7 +119,7 @@ function checkProfanity(text: string, profanityWords: string[], threshold: numbe
   // Compare each word as a whole unit against the profanity list
   for (const word of words) {
     for (const badWord of profanityWords) {
-      const similarity = compareTwoStrings(word, badWord);
+      const similarity = StringComparisons.Jaccard.similarity(word, badWord);
       if (similarity >= threshold) {
         if (!detectedWords.includes(badWord)) {
           detectedWords.push(badWord);
