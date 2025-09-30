@@ -9,7 +9,7 @@
  * - Uses string-comparisons package (Jaccard similarity) for fuzzy string matching
  * - Matches whole words only (not substrings within words)
  * - Detects profanity even with character substitutions or typos
- * - Returns original profanity words from the text (not dictionary words) and an overall profanity score (0-1)
+ * - Returns original profanity words from text with leading/trailing punctuation trimmed (not dictionary words) and an overall profanity score (0-1)
  * - Configurable similarity threshold (default: 0.75)
  * 
  * Usage:
@@ -104,6 +104,12 @@ function extractWordsWithOriginal(text: string): { normalized: string; original:
     .filter(item => item.normalized.length > 0);
 }
 
+// Trim punctuation from the beginning and end of a word
+function trimPunctuation(word: string): string {
+  // Remove leading and trailing non-letter characters, but keep internal punctuation
+  return word.replace(/^[^а-яёіїєґa-z]+|[^а-яёіїєґa-z]+$/gi, '');
+}
+
 // Calculate toxicity score for a single word against bad words dictionary
 function wordToxicity(word: string, badWords: string[]): number {
   if (word.length === 0) return 0;
@@ -132,9 +138,10 @@ function checkProfanity(text: string, profanityWords: string[], threshold: numbe
     for (const badWord of profanityWords) {
       const similarity = StringComparisons.Jaccard.similarity(wordInfo.normalized, badWord);
       if (similarity >= threshold) {
-        // Add the original word from the text, not the dictionary word
-        if (!detectedWords.includes(wordInfo.original)) {
-          detectedWords.push(wordInfo.original);
+        // Add the original word from the text with leading/trailing punctuation removed
+        const trimmedWord = trimPunctuation(wordInfo.original);
+        if (trimmedWord && !detectedWords.includes(trimmedWord)) {
+          detectedWords.push(trimmedWord);
         }
         break; // Stop checking other bad words for this word
       }
