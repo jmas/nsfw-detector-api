@@ -10,7 +10,8 @@
  * - Matches whole words only (not substrings within words)
  * - Detects profanity even with character substitutions or typos
  * - Returns original profanity words from text with leading/trailing punctuation trimmed (not dictionary words) and an overall profanity score (0-1)
- * - Configurable similarity threshold (default: 0.75)
+ * - Configurable similarity threshold for word matching (default: 0.9)
+ * - isProfanity flag is determined by score threshold (default: 0.5)
  * 
  * Usage:
  * POST / with form data containing 'image' field OR 'text' field
@@ -34,7 +35,8 @@ const MAX_IMAGE_DIMENSION = parseInt(Deno.env.get("MAX_IMAGE_DIMENSION") || "640
 const MIN_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MIN_IMAGE_FILE_SIZE") || "1024"); // 1KB
 const MAX_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MAX_IMAGE_FILE_SIZE") || String(0.5 * 1024 * 1024)); // 0.5MB
 const MAX_TEXT_LENGTH = parseInt(Deno.env.get("MAX_TEXT_LENGTH") || "1000");
-const PROFANITY_THRESHOLD = parseFloat(Deno.env.get("PROFANITY_THRESHOLD") || "0.9"); // Similarity threshold (0-1)
+const PROFANITY_WORD_THRESHOLD = parseFloat(Deno.env.get("PROFANITY_WORD_THRESHOLD") || "0.9"); // Similarity threshold (0-1)
+const PROFANITY_SCORE_THRESHOLD = parseFloat(Deno.env.get("PROFANITY_SCORE_THRESHOLD") || "0.5"); // Overall toxicity score threshold (0-1)
 
 // Supported languages for profanity checking
 const SUPPORTED_LANGUAGES = [
@@ -158,7 +160,7 @@ function calculateTextToxicity(text: string, badWords: string[], threshold: numb
 }
 
 // Enhanced profanity checker with similarity matching (whole words only)
-function checkProfanity(text: string, profanityWords: string[], threshold: number = PROFANITY_THRESHOLD): { words: string[]; score: number } {
+function checkProfanity(text: string, profanityWords: string[], threshold: number = PROFANITY_WORD_THRESHOLD): { words: string[]; score: number } {
   const detectedWords: string[] = [];
   const words = extractWordsWithOriginal(text);
   
@@ -576,7 +578,7 @@ async function processText(text: string, req: Request): Promise<any> {
   }
 
   return {
-    isProfanity: allDetectedWords.length > 0,
+    isProfanity: maxProfanityScore >= PROFANITY_SCORE_THRESHOLD,
     profanity: allDetectedWords,
     score: maxProfanityScore
   };
