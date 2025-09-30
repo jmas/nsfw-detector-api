@@ -45,7 +45,7 @@ Send a POST request with form data containing an image file in the `image` field
 
 - **Format**: JPEG/JPG only
 - **Dimensions**: Maximum 640x640 pixels
-- **File Size**: Between 1KB and 10MB
+- **File Size**: Between 1KB and 500KB (need to scale down)
 - **Quality**: Must be properly compressed (not corrupted or overly compressed)
 
 ```bash
