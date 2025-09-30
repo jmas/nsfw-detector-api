@@ -34,7 +34,7 @@ const MAX_IMAGE_DIMENSION = parseInt(Deno.env.get("MAX_IMAGE_DIMENSION") || "640
 const MIN_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MIN_IMAGE_FILE_SIZE") || "1024"); // 1KB
 const MAX_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MAX_IMAGE_FILE_SIZE") || String(0.5 * 1024 * 1024)); // 0.5MB
 const MAX_TEXT_LENGTH = parseInt(Deno.env.get("MAX_TEXT_LENGTH") || "1000");
-const PROFANITY_THRESHOLD = parseFloat(Deno.env.get("PROFANITY_THRESHOLD") || "0.83"); // Similarity threshold (0-1)
+const PROFANITY_THRESHOLD = parseFloat(Deno.env.get("PROFANITY_THRESHOLD") || "0.9"); // Similarity threshold (0-1)
 
 // Supported languages for profanity checking
 const SUPPORTED_LANGUAGES = [
