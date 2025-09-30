@@ -188,7 +188,7 @@ interface DetectionResponse {
   confidence?: number;
   profanity?: string[];
   processingTime: number;
-  contentType: 'image' | 'text' | 'both';
+  type: 'image' | 'text' | 'both';
 }
 
 // @ts-ignore - Promise constructor available in Deno Deploy runtime
@@ -269,7 +269,7 @@ async function handleContentDetection(text: string | null, imageFile: File | nul
     }
 
     const processingTime = Date.now() - startTime;
-    const contentType = (imageFile && text) ? 'both' : (imageFile ? 'image' : 'text');
+    const type = (imageFile && text) ? 'both' : (imageFile ? 'image' : 'text');
 
     const response: DetectionResponse = {
       ...(imageResult && { 
@@ -281,7 +281,7 @@ async function handleContentDetection(text: string | null, imageFile: File | nul
       }),
       isNSFW,
       processingTime,
-      contentType
+      type
     };
 
     return new Response(

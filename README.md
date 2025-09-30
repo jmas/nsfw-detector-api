@@ -220,7 +220,7 @@ The API supports profanity checking for the following languages:
   "isNSFW": false,
   "confidence": 0.12,
   "processingTime": 1250,
-  "contentType": "image"
+  "type": "image"
 }
 ```
 
@@ -231,7 +231,7 @@ The API supports profanity checking for the following languages:
   "isNSFW": true,
   "profanity": ["badword1", "badword2"],
   "processingTime": 45,
-  "contentType": "text"
+  "type": "text"
 }
 ```
 
@@ -253,7 +253,7 @@ The API supports profanity checking for the following languages:
   "confidence": 0.12,
   "profanity": ["badword1", "badword2"],
   "processingTime": 1300,
-  "contentType": "both"
+  "type": "both"
 }
 ```
 
@@ -266,7 +266,7 @@ The API supports profanity checking for the following languages:
 - **confidence**: Highest probability among NSFW categories (Porn, Sexy, Hentai) - only present for image requests
 - **profanity**: Array of detected profane words - only present for text requests
 - **processingTime**: Time taken to process the content in milliseconds
-- **contentType**: "image" for image-only requests, "text" for text-only requests, "both" for combined requests
+- **type**: "image" for image-only requests, "text" for text-only requests, "both" for combined requests
 
 #### Combined Detection
 
