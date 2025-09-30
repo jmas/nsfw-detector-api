@@ -119,13 +119,20 @@ function wordToxicity(word: string, badWords: string[]): number {
 }
 
 // Calculate overall text toxicity score
-function calculateTextToxicity(text: string, badWords: string[]): number {
+function calculateTextToxicity(text: string, badWords: string[], threshold: number = 0): number {
   const words = extractWords(text);
   if (words.length === 0) return 0;
 
   const wordScores = words.map(word => wordToxicity(word, badWords));
-  // Return maximum toxicity found in the text
-  return Math.max(...wordScores, 0);
+  
+  // Filter out words that don't meet the threshold
+  const toxicWords = wordScores.filter(score => score >= threshold);
+  
+  // If no words meet the threshold, return 0
+  if (toxicWords.length === 0) return 0;
+  
+  // Return maximum toxicity found among words that meet the threshold
+  return Math.max(...toxicWords, 0);
 }
 
 // Enhanced profanity checker with similarity matching (whole words only)
@@ -149,7 +156,7 @@ function checkProfanity(text: string, profanityWords: string[], threshold: numbe
   }
   
   // Calculate overall toxicity score
-  const toxicityScore = calculateTextToxicity(text, profanityWords);
+  const toxicityScore = calculateTextToxicity(text, profanityWords, threshold);
   
   return {
     words: detectedWords,
