@@ -122,7 +122,8 @@ function wordToxicity(word: string, badWords: string[]): number {
 // Returns a score from 0 to 1 where:
 // - 0 means no toxic words found
 // - Higher values indicate more toxic content
-// - Score considers both the ratio and absolute count of toxic words
+// - Uses logarithmic scaling to work universally across all text lengths
+// - Balances both absolute toxic count and density adaptively
 function calculateTextToxicity(text: string, badWords: string[], threshold: number = 0): number {
   const words = extractWords(text);
   if (words.length === 0) return 0;
@@ -139,13 +140,21 @@ function calculateTextToxicity(text: string, badWords: string[], threshold: numb
   // If no toxic words found, return 0
   if (toxicCount === 0) return 0;
   
-  // Calculate toxicity score based on ratio of toxic words to total words
-  // Multiply by a scaling factor to make the score more sensitive
-  // Cap at 1.0 to keep the score in the 0-1 range
-  const toxicRatio = toxicCount / words.length;
-  const scalingFactor = 5; // Adjust sensitivity: lower = more lenient, higher = stricter
+  // Universal formula using logarithmic scaling
+  // This naturally balances count vs density across any text length:
+  // - Short texts: ratio matters more (high density = high score)
+  // - Long texts: absolute count matters more (many toxic words = high score)
+  // Formula: toxicCount / log10(totalWords + 9)
+  // The +9 constant ensures short texts aren't over-penalized
+  const divisor = Math.log10(words.length + 9);
+  const baseScore = toxicCount / divisor;
   
-  return Math.min(1.0, toxicRatio * scalingFactor);
+  // Apply a scaling factor to calibrate the final score
+  // This determines overall sensitivity of the detector
+  const scalingFactor = 0.4;
+  
+  // Cap at 1.0 to keep score in valid range
+  return Math.min(1.0, baseScore * scalingFactor);
 }
 
 // Enhanced profanity checker with similarity matching (whole words only)
