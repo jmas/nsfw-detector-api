@@ -2,8 +2,15 @@
  * NSFW Content Detection API
  * 
  * This Deno Deploy application provides an HTTP endpoint for detecting NSFW content in images
- * using the nsfwjs library and profanity in text using content-checker. It accepts POST requests 
- * with image data or text content and returns classification results.
+ * using the nsfwjs library and profanity in text using fuzzy string matching with similarity scoring.
+ * It accepts POST requests with image data or text content and returns classification results.
+ * 
+ * Profanity Detection:
+ * - Uses string-similarity package (Dice coefficient/Sørensen–Dice) for fuzzy string matching
+ * - Matches whole words only (not substrings within words)
+ * - Detects profanity even with character substitutions or typos
+ * - Returns both detected bad words and an overall profanity score (0-1)
+ * - Configurable similarity threshold (default: 0.75)
  * 
  * Usage:
  * POST / with form data containing 'image' field OR 'text' field
@@ -15,7 +22,9 @@
 
 // Dynamic imports will be used when needed
 // tf, nsfwjs, and jpeg-js will be imported only when image processing is required
-// content-checker will be imported only when text processing is required
+// string-similarity is used for profanity detection with fuzzy matching
+
+import { compareTwoStrings } from "string-similarity";
 
 // Initialize the NSFW model (loaded dynamically when needed)
 let model: any = null;
@@ -25,6 +34,7 @@ const MAX_IMAGE_DIMENSION = parseInt(Deno.env.get("MAX_IMAGE_DIMENSION") || "640
 const MIN_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MIN_IMAGE_FILE_SIZE") || "1024"); // 1KB
 const MAX_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MAX_IMAGE_FILE_SIZE") || String(0.5 * 1024 * 1024)); // 0.5MB
 const MAX_TEXT_LENGTH = parseInt(Deno.env.get("MAX_TEXT_LENGTH") || "1000");
+const PROFANITY_THRESHOLD = parseFloat(Deno.env.get("PROFANITY_THRESHOLD") || "0.75"); // Similarity threshold (0-1)
 
 // Supported languages for profanity checking
 const SUPPORTED_LANGUAGES = [
@@ -69,18 +79,63 @@ async function loadProfanityList(language: string): Promise<string[]> {
   }
 }
 
-// Simple profanity checker function
-function checkProfanity(text: string, profanityWords: string[]): string[] {
-  const detectedWords: string[] = [];
-  const normalizedText = text.toLowerCase();
+// Normalize word: remove non-letter characters and convert to lowercase
+function normalizeWord(word: string): string {
+  return word.toLowerCase().replace(/[^а-яёіїєґa-z]/gi, '');
+}
+
+// Extract whole words from text (split by whitespace and remove punctuation)
+function extractWords(text: string): string[] {
+  // Split by whitespace and extract normalized words
+  return text
+    .split(/\s+/)
+    .map(word => normalizeWord(word))
+    .filter(word => word.length > 0);
+}
+
+// Calculate toxicity score for a single word against bad words dictionary
+function wordToxicity(word: string, badWords: string[]): number {
+  if (word.length === 0) return 0;
   
-  for (const word of profanityWords) {
-    if (normalizedText.includes(word)) {
-      detectedWords.push(word);
+  const scores = badWords.map(bw => compareTwoStrings(word, bw));
+  return Math.max(...scores, 0); // Maximum similarity with dictionary
+}
+
+// Calculate overall text toxicity score
+function calculateTextToxicity(text: string, badWords: string[]): number {
+  const words = extractWords(text);
+  if (words.length === 0) return 0;
+
+  const wordScores = words.map(word => wordToxicity(word, badWords));
+  // Return maximum toxicity found in the text
+  return Math.max(...wordScores, 0);
+}
+
+// Enhanced profanity checker with similarity matching (whole words only)
+function checkProfanity(text: string, profanityWords: string[], threshold: number = PROFANITY_THRESHOLD): { words: string[]; score: number } {
+  const detectedWords: string[] = [];
+  const words = extractWords(text);
+  
+  // Compare each word as a whole unit against the profanity list
+  for (const word of words) {
+    for (const badWord of profanityWords) {
+      const similarity = compareTwoStrings(word, badWord);
+      if (similarity >= threshold) {
+        if (!detectedWords.includes(badWord)) {
+          detectedWords.push(badWord);
+        }
+        break; // Stop checking other bad words for this word
+      }
     }
   }
   
-  return detectedWords;
+  // Calculate overall toxicity score
+  const toxicityScore = calculateTextToxicity(text, profanityWords);
+  
+  return {
+    words: detectedWords,
+    score: Math.round(toxicityScore * 100) / 100 // Round to 2 decimal places
+  };
 }
 
 // Dynamic model loading with imports
@@ -204,6 +259,7 @@ interface DetectionResponse {
   isProfanity?: boolean;
   confidence?: number;
   profanity?: string[];
+  score?: number;
   processingTime: number;
 }
 
@@ -304,7 +360,8 @@ async function handleContentDetection(text: string | null, imageFile: File | nul
       }),
       ...(textResult && { 
         isProfanity: textResult.isProfanity,
-        profanity: textResult.profanity
+        profanity: textResult.profanity,
+        score: textResult.score
       }),
       processingTime
     };
@@ -448,25 +505,32 @@ async function processText(text: string, req: Request): Promise<any> {
 
   // Check profanity for each language
   const allDetectedWords: string[] = [];
+  let maxProfanityScore = 0;
 
   for (const language of uniqueLanguages) {
     // Load profanity list for the language
     const profanityWords = await loadProfanityList(language);
 
-    // Simple profanity checking using loaded word list
-    const detectedWords = checkProfanity(text, profanityWords);
+    // Enhanced profanity checking with similarity matching
+    const result = checkProfanity(text, profanityWords);
 
     // Collect all detected words (removing duplicates)
-    for (const word of detectedWords) {
+    for (const word of result.words) {
       if (!allDetectedWords.includes(word)) {
         allDetectedWords.push(word);
       }
+    }
+
+    // Track the maximum profanity score across all languages
+    if (result.score > maxProfanityScore) {
+      maxProfanityScore = result.score;
     }
   }
 
   return {
     isProfanity: allDetectedWords.length > 0,
-    profanity: allDetectedWords
+    profanity: allDetectedWords,
+    score: maxProfanityScore
   };
 }
 

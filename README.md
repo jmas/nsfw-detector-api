@@ -7,9 +7,11 @@ A Deno Deploy application that detects NSFW (Not Safe For Work) content in image
 - **Dual Content Detection**: Supports both image NSFW detection and text profanity checking
 - **HTTP API Endpoint**: Accepts POST requests with JPEG image data or JSON text content
 - **NSFW Classification**: Uses TensorFlow.js and nsfwjs for accurate image content detection
-- **Profanity Detection**: Uses language-specific profanity word lists from [jmas/profanity-list](https://github.com/jmas/profanity-list)
+- **Fuzzy Profanity Detection**: Uses string-similarity with Dice coefficient for detecting profanity with typos and character substitutions
+- **Profanity Scoring**: Returns both detected words and an overall profanity score (0-1) for the entire text
 - **Multi-language Support**: Supports 21 languages for profanity checking
 - **Simultaneous Multi-language Checking**: Check text against multiple languages at once (e.g., uk, en, ru)
+- **Whole Word Matching**: Matches complete words only, not substrings within words
 - **Multiple Categories**: Detects Porn, Sexy, and Hentai content in images
 - **Confidence Scoring**: Returns probability scores for each classification
 - **Image Validation**: Validates image dimensions (max 640x640) and file size
@@ -36,7 +38,7 @@ All content types support `multipart/form-data` and `application/x-www-form-urle
 
 **Note**: Libraries are loaded dynamically only when needed:
 - Image processing libraries (TensorFlow.js, nsfwjs, jpeg-js) are loaded only when an image is present
-- Profanity checking is performed using simple word matching for optimal performance
+- Profanity checking uses string-similarity for fuzzy matching with configurable similarity threshold
 
 ### Image NSFW Detection
 
@@ -263,6 +265,7 @@ The API supports profanity checking for the following languages:
 {
   "isProfanity": true,
   "profanity": ["badword1", "badword2"],
+  "score": 0.92,
   "processingTime": 45
 }
 ```
@@ -285,6 +288,7 @@ The API supports profanity checking for the following languages:
   "isProfanity": true,
   "confidence": 0.12,
   "profanity": ["badword1", "badword2"],
+  "score": 0.92,
   "processingTime": 1300
 }
 ```
@@ -301,6 +305,7 @@ The API supports profanity checking for the following languages:
 **Text Detection Fields:**
 - **isProfanity**: Boolean indicating if profanity was detected in the text (in any of the checked languages)
 - **profanity**: Array of all detected profane words across all checked languages (deduplicated) - only present for text requests
+- **score**: Overall profanity score (0-1) representing the maximum similarity found in the text - only present for text requests
 
 **Common Fields:**
 - **processingTime**: Time taken to process the content in milliseconds
@@ -311,6 +316,7 @@ When both image and text are processed in the same request:
 - Both **isNSFW** and **isProfanity** fields are included separately
 - Both **predictions** and **profanity** fields are included in the response
 - **confidence** field is included from image processing
+- **score** field is included from text processing
 
 ### Classification Categories
 
@@ -428,10 +434,14 @@ The model can classify images into these categories:
 - **Language Support**: Supports 21 languages with cached word lists for performance
 - **Multi-language Checking**: Can check text against multiple languages simultaneously in a single request
 - **Text Validation**: Validates text length (configurable via environment variable, default 1000 characters)
-- **Detection Method**: Simple substring matching with case-insensitive comparison
+- **Detection Method**: Uses string-similarity package with Dice coefficient (Sørensen–Dice) for fuzzy string matching
+- **Fuzzy Matching**: Detects profanity even with typos, character substitutions, or l33t speak variations
+- **Whole Word Matching**: Matches complete words only, not substrings within other words
+- **Similarity Threshold**: Configurable threshold (default 0.75) for determining matches
+- **Profanity Scoring**: Returns overall profanity score (0-1) representing maximum toxicity found in the text
 - **Caching**: Profanity lists are loaded once per language and cached in memory for fast subsequent checks
 - **Language Validation**: Validates language codes and throws errors for unsupported languages
-- **Performance**: Fast text processing with minimal memory footprint, efficient parallel language checking
+- **Performance**: Efficient processing with parallel language checking and normalized word comparison
 
 ### Dynamic Loading & Performance
 
@@ -452,6 +462,7 @@ The application can be configured using environment variables to adjust validati
 | `MIN_IMAGE_FILE_SIZE` | Minimum image file size (in bytes) | `1024` (1KB) |
 | `MAX_IMAGE_FILE_SIZE` | Maximum image file size (in bytes) | `524288` (0.5MB) |
 | `MAX_TEXT_LENGTH` | Maximum text length (in characters) | `1000` |
+| `PROFANITY_THRESHOLD` | Similarity threshold for profanity detection (0-1) | `0.75` |
 
 ### Setting Environment Variables
 
