@@ -9,6 +9,7 @@ A Deno Deploy application that detects NSFW (Not Safe For Work) content in image
 - **NSFW Classification**: Uses TensorFlow.js and nsfwjs for accurate image content detection
 - **Profanity Detection**: Uses language-specific profanity word lists from [jmas/profanity-list](https://github.com/jmas/profanity-list)
 - **Multi-language Support**: Supports 21 languages for profanity checking
+- **Simultaneous Multi-language Checking**: Check text against multiple languages at once (e.g., uk, en, ru)
 - **Multiple Categories**: Detects Porn, Sexy, and Hentai content in images
 - **Confidence Scoring**: Returns probability scores for each classification
 - **Image Validation**: Validates image dimensions (max 640x640) and file size
@@ -44,8 +45,8 @@ Send a POST request with form data containing an image file in the `image` field
 ### Image Requirements
 
 - **Format**: JPEG/JPG only
-- **Dimensions**: Maximum 640x640 pixels
-- **File Size**: Between 1KB and 500KB (need to scale down)
+- **Dimensions**: Maximum 640x640 pixels (configurable via environment variable)
+- **File Size**: Between 1KB and 500KB (configurable via environment variables)
 - **Quality**: Must be properly compressed (not corrupted or overly compressed)
 
 ```bash
@@ -74,13 +75,26 @@ fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
 
 ### Text Profanity Checking
 
-Send a POST request with form data containing text content and include a `Content-Language` header.
+Send a POST request with form data containing text content and include a `Content-Language` header. You can specify one or more languages (comma-separated) to check the text against multiple language profanity lists simultaneously.
+
+#### Text Requirements
+
+- **Maximum Length**: 1000 characters (configurable via environment variable)
 
 #### Request Format (multipart/form-data)
 
+**Single Language:**
 ```bash
 curl -X POST \
   -H "Content-Language: en" \
+  -F "text=Your text content here" \
+  https://nsfw-detector.ujournal.com.ua/
+```
+
+**Multiple Languages:**
+```bash
+curl -X POST \
+  -H "Content-Language: uk, en, ru" \
   -F "text=Your text content here" \
   https://nsfw-detector.ujournal.com.ua/
 ```
@@ -97,6 +111,7 @@ curl -X POST \
 
 #### JavaScript Example (FormData)
 
+**Single Language:**
 ```js
 const formdata = new FormData();
 formdata.append("text", "Your text content to check for profanity");
@@ -105,6 +120,25 @@ const requestOptions = {
   method: "POST",
   headers: {
     "Content-Language": "en"
+  },
+  body: formdata
+};
+
+fetch("https://nsfw-detector.ujournal.com.ua/", requestOptions)
+  .then((response) => response.json())
+  .then((result) => console.log(result))
+  .catch((error) => console.error(error));
+```
+
+**Multiple Languages:**
+```js
+const formdata = new FormData();
+formdata.append("text", "Your text content to check for profanity");
+
+const requestOptions = {
+  method: "POST",
+  headers: {
+    "Content-Language": "uk, en, ru"  // Check against Ukrainian, English, and Russian
   },
   body: formdata
 };
@@ -265,8 +299,8 @@ The API supports profanity checking for the following languages:
 - **confidence**: Highest probability among NSFW categories (Porn, Sexy, Hentai) - only present for image requests
 
 **Text Detection Fields:**
-- **isProfanity**: Boolean indicating if profanity was detected in the text
-- **profanity**: Array of detected profane words - only present for text requests
+- **isProfanity**: Boolean indicating if profanity was detected in the text (in any of the checked languages)
+- **profanity**: Array of all detected profane words across all checked languages (deduplicated) - only present for text requests
 
 **Common Fields:**
 - **processingTime**: Time taken to process the content in milliseconds
@@ -306,7 +340,14 @@ The model can classify images into these categories:
 ### Missing Language Header (400)
 ```json
 {
-  "error": "Content-Language header is required for text profanity checking."
+  "error": "Content-Language header is required for text profanity checking. Specify one or more languages separated by commas (e.g., 'en', or 'uk, en, ru')."
+}
+```
+
+### Text Length Exceeds Maximum (400)
+```json
+{
+  "error": "Text length exceeds maximum allowed size. Current: 1500 characters, Maximum: 1000 characters"
 }
 ```
 
@@ -375,7 +416,7 @@ The model can classify images into these categories:
 
 - **Model**: Uses nsfwjs v2.4.2 with TensorFlow.js v4.15.0
 - **Image Processing**: Uses jpeg-js library to decode JPEG images and convert to tensors for nsfwjs compatibility
-- **Image Validation**: Validates dimensions (max 640x640), file size (1KB-10MB), and compression quality
+- **Image Validation**: Validates dimensions, file size, and compression quality (all limits configurable via environment variables)
 - **Model Loading**: Attempts multiple model sources for Deno Deploy compatibility
 - **Performance**: Model is loaded once and cached for subsequent requests
 - **Memory Management**: Properly disposes tensors to prevent memory leaks
@@ -385,10 +426,12 @@ The model can classify images into these categories:
 
 - **Profanity Lists**: Uses word lists from [jmas/profanity-list](https://github.com/jmas/profanity-list) repository
 - **Language Support**: Supports 21 languages with cached word lists for performance
+- **Multi-language Checking**: Can check text against multiple languages simultaneously in a single request
+- **Text Validation**: Validates text length (configurable via environment variable, default 1000 characters)
 - **Detection Method**: Simple substring matching with case-insensitive comparison
-- **Caching**: Profanity lists are loaded once per language and cached in memory
+- **Caching**: Profanity lists are loaded once per language and cached in memory for fast subsequent checks
 - **Language Validation**: Validates language codes and throws errors for unsupported languages
-- **Performance**: Fast text processing with minimal memory footprint
+- **Performance**: Fast text processing with minimal memory footprint, efficient parallel language checking
 
 ### Dynamic Loading & Performance
 
@@ -396,6 +439,46 @@ The model can classify images into these categories:
 - **Memory Efficiency**: Libraries are imported dynamically to reduce initial bundle size
 - **Combined Processing**: Both image and text can be processed in a single request for efficiency
 - **Unified Response**: Single `isNSFW` field indicates if either image OR text contains inappropriate content
+
+## Configuration
+
+The application can be configured using environment variables to adjust validation limits:
+
+### Environment Variables
+
+| Variable | Description | Default Value |
+|----------|-------------|---------------|
+| `MAX_IMAGE_DIMENSION` | Maximum width or height for images (in pixels) | `640` |
+| `MIN_IMAGE_FILE_SIZE` | Minimum image file size (in bytes) | `1024` (1KB) |
+| `MAX_IMAGE_FILE_SIZE` | Maximum image file size (in bytes) | `524288` (0.5MB) |
+| `MAX_TEXT_LENGTH` | Maximum text length (in characters) | `1000` |
+
+### Setting Environment Variables
+
+**Deno Deploy:**
+1. Go to your project settings on [Deno Deploy](https://dash.deno.com/)
+2. Navigate to the "Environment Variables" section
+3. Add your custom values
+
+**Local Development:**
+```bash
+# Set environment variables before running
+export MAX_TEXT_LENGTH=2000
+export MAX_IMAGE_DIMENSION=800
+
+# Run the application
+deno run --allow-net --allow-env nsfw-detector.http.tsx
+```
+
+**Using .env file (local development):**
+```bash
+# Create a .env file
+echo "MAX_TEXT_LENGTH=2000" > .env
+echo "MAX_IMAGE_DIMENSION=800" >> .env
+
+# Run with environment variables loaded
+deno run --allow-net --allow-env --allow-read nsfw-detector.http.tsx
+```
 
 ## Deployment
 

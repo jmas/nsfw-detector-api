@@ -6,8 +6,10 @@
  * with image data or text content and returns classification results.
  * 
  * Usage:
- * POST / with form data containing 'image' field OR JSON body with 'text' field
+ * POST / with form data containing 'image' field OR 'text' field
  * Include 'Content-Language' header for text profanity checking
+ * - Single language: 'Content-Language: en'
+ * - Multiple languages: 'Content-Language: uk, en, ru'
  * Returns JSON with NSFW/profanity classification results
  */
 
@@ -17,6 +19,12 @@
 
 // Initialize the NSFW model (loaded dynamically when needed)
 let model: any = null;
+
+// Configuration from environment variables with defaults
+const MAX_IMAGE_DIMENSION = parseInt(Deno.env.get("MAX_IMAGE_DIMENSION") || "640");
+const MIN_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MIN_IMAGE_FILE_SIZE") || "1024"); // 1KB
+const MAX_IMAGE_FILE_SIZE = parseInt(Deno.env.get("MAX_IMAGE_FILE_SIZE") || String(0.5 * 1024 * 1024)); // 0.5MB
+const MAX_TEXT_LENGTH = parseInt(Deno.env.get("MAX_TEXT_LENGTH") || "1000");
 
 // Supported languages for profanity checking
 const SUPPORTED_LANGUAGES = [
@@ -106,30 +114,26 @@ async function loadModel() {
 
 // Validate image dimensions and file size
 function validateImageDimensions(width: number, height: number, fileSize: number): { valid: boolean; error?: string } {
-  const MAX_DIMENSION = 640;
-  const MIN_FILE_SIZE = 1024; // 1KB minimum
-  const MAX_FILE_SIZE = 0.5 * 1024 * 1024; // 0.5MB maximum
-  
   // Check dimensions
-  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+  if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
     return {
       valid: false,
-      error: `Image dimensions exceed maximum allowed size. Current: ${width}x${height}, Maximum: ${MAX_DIMENSION}x${MAX_DIMENSION}`
+      error: `Image dimensions exceed maximum allowed size. Current: ${width}x${height}, Maximum: ${MAX_IMAGE_DIMENSION}x${MAX_IMAGE_DIMENSION}`
     };
   }
   
   // Check file size
-  if (fileSize < MIN_FILE_SIZE) {
+  if (fileSize < MIN_IMAGE_FILE_SIZE) {
     return {
       valid: false,
-      error: `File size too small. Current: ${fileSize} bytes, Minimum: ${MIN_FILE_SIZE} bytes`
+      error: `File size too small. Current: ${fileSize} bytes, Minimum: ${MIN_IMAGE_FILE_SIZE} bytes`
     };
   }
   
-  if (fileSize > MAX_FILE_SIZE) {
+  if (fileSize > MAX_IMAGE_FILE_SIZE) {
     return {
       valid: false,
-      error: `File size too large. Current: ${fileSize} bytes, Maximum: ${MAX_FILE_SIZE} bytes`
+      error: `File size too large. Current: ${fileSize} bytes, Maximum: ${MAX_IMAGE_FILE_SIZE} bytes`
     };
   }
   
@@ -151,6 +155,18 @@ function validateImageDimensions(width: number, height: number, fileSize: number
   //     error: `File appears to be uncompressed or corrupted. File size (${fileSize} bytes) is too large for image dimensions (${width}x${height})`
   //   };
   // }
+  
+  return { valid: true };
+}
+
+// Validate text length
+function validateTextLength(text: string): { valid: boolean; error?: string } {
+  if (text.length > MAX_TEXT_LENGTH) {
+    return {
+      valid: false,
+      error: `Text length exceeds maximum allowed size. Current: ${text.length} characters, Maximum: ${MAX_TEXT_LENGTH} characters`
+    };
+  }
   
   return { valid: true };
 }
@@ -275,7 +291,7 @@ async function handleContentDetection(text: string | null, imageFile: File | nul
       }),
       ...(textResult && { 
         isProfanity: textResult.isProfanity,
-        profanity: textResult.profanity 
+        profanity: textResult.profanity
       }),
       processingTime
     };
@@ -385,29 +401,59 @@ async function processImage(imageFile: File): Promise<any> {
 
 // Process text for profanity checking
 async function processText(text: string, req: Request): Promise<any> {
-  // Get language from Content-Language header
+  // Validate text length
+  const textValidation = validateTextLength(text);
+  if (!textValidation.valid) {
+    throw new Error(textValidation.error);
+  }
+
+  // Get language(s) from Content-Language header
   const languageHeader = req.headers.get("content-language");
   if (!languageHeader) {
-    throw new Error("Content-Language header is required for text profanity checking.");
+    throw new Error("Content-Language header is required for text profanity checking. Specify one or more languages separated by commas (e.g., 'en', or 'uk, en, ru').");
   }
 
-  // Extract language code (handle formats like "en", "en-US", "en_US")
-  const language = languageHeader.split(/[-_]/)[0].toLowerCase();
+  // Parse multiple languages from the header (comma-separated)
+  // Handle formats like "en", "en-US", "en_US", "uk, en, ru", "uk,en,ru"
+  const languageCodes = languageHeader
+    .split(',')
+    .map(lang => lang.trim().split(/[-_]/)[0].toLowerCase())
+    .filter(lang => lang.length > 0);
 
-  // Validate language support
-  if (!SUPPORTED_LANGUAGES.includes(language)) {
-    throw new Error(`Unsupported language: ${language}. Supported languages: ${SUPPORTED_LANGUAGES.join(", ")}`);
+  if (languageCodes.length === 0) {
+    throw new Error("No valid language codes found in Content-Language header.");
   }
 
-  // Load profanity list for the language
-  const profanityWords = await loadProfanityList(language);
+  // Validate all languages are supported
+  const unsupportedLanguages = languageCodes.filter(lang => !SUPPORTED_LANGUAGES.includes(lang));
+  if (unsupportedLanguages.length > 0) {
+    throw new Error(`Unsupported language(s): ${unsupportedLanguages.join(", ")}. Supported languages: ${SUPPORTED_LANGUAGES.join(", ")}`);
+  }
 
-  // Simple profanity checking using loaded word list
-  const detectedWords = checkProfanity(text, profanityWords);
+  // Remove duplicates
+  const uniqueLanguages = Array.from(new Set(languageCodes));
+
+  // Check profanity for each language
+  const allDetectedWords: string[] = [];
+
+  for (const language of uniqueLanguages) {
+    // Load profanity list for the language
+    const profanityWords = await loadProfanityList(language);
+
+    // Simple profanity checking using loaded word list
+    const detectedWords = checkProfanity(text, profanityWords);
+
+    // Collect all detected words (removing duplicates)
+    for (const word of detectedWords) {
+      if (!allDetectedWords.includes(word)) {
+        allDetectedWords.push(word);
+      }
+    }
+  }
 
   return {
-    isProfanity: detectedWords.length > 0,
-    profanity: detectedWords
+    isProfanity: allDetectedWords.length > 0,
+    profanity: allDetectedWords
   };
 }
 
