@@ -184,11 +184,11 @@ interface NSFWResult {
 
 interface DetectionResponse {
   predictions?: NSFWResult[];
-  isNSFW: boolean;
+  isNSFW?: boolean;
+  isProfanity?: boolean;
   confidence?: number;
   profanity?: string[];
   processingTime: number;
-  type: 'image' | 'text' | 'both';
 }
 
 // @ts-ignore - Promise constructor available in Deno Deploy runtime
@@ -254,34 +254,30 @@ async function handleContentDetection(text: string | null, imageFile: File | nul
   try {
     let imageResult: any = null;
     let textResult: any = null;
-    let isNSFW = false;
 
     // Process image if present
     if (imageFile) {
       imageResult = await processImage(imageFile);
-      isNSFW = isNSFW || imageResult.isNSFW;
     }
 
     // Process text if present
     if (text) {
       textResult = await processText(text, req);
-      isNSFW = isNSFW || textResult.isNSFW;
     }
 
     const processingTime = Date.now() - startTime;
-    const type = (imageFile && text) ? 'both' : (imageFile ? 'image' : 'text');
 
     const response: DetectionResponse = {
       ...(imageResult && { 
         predictions: imageResult.predictions,
+        isNSFW: imageResult.isNSFW,
         confidence: imageResult.confidence 
       }),
       ...(textResult && { 
+        isProfanity: textResult.isProfanity,
         profanity: textResult.profanity 
       }),
-      isNSFW,
-      processingTime,
-      type
+      processingTime
     };
 
     return new Response(
@@ -410,7 +406,7 @@ async function processText(text: string, req: Request): Promise<any> {
   const detectedWords = checkProfanity(text, profanityWords);
 
   return {
-    isNSFW: detectedWords.length > 0,
+    isProfanity: detectedWords.length > 0,
     profanity: detectedWords
   };
 }

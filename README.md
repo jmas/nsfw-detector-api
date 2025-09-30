@@ -219,8 +219,7 @@ The API supports profanity checking for the following languages:
   ],
   "isNSFW": false,
   "confidence": 0.12,
-  "processingTime": 1250,
-  "type": "image"
+  "processingTime": 1250
 }
 ```
 
@@ -228,10 +227,9 @@ The API supports profanity checking for the following languages:
 
 ```json
 {
-  "isNSFW": true,
+  "isProfanity": true,
   "profanity": ["badword1", "badword2"],
-  "processingTime": 45,
-  "type": "text"
+  "processingTime": 45
 }
 ```
 
@@ -249,29 +247,34 @@ The API supports profanity checking for the following languages:
       "probability": 0.12
     }
   ],
-  "isNSFW": true,
+  "isNSFW": false,
+  "isProfanity": true,
   "confidence": 0.12,
   "profanity": ["badword1", "badword2"],
-  "processingTime": 1300,
-  "type": "both"
+  "processingTime": 1300
 }
 ```
 
 ### Response Fields
 
-#### Image Detection Fields
+#### Response Fields
 
+**Image Detection Fields:**
 - **predictions**: Array of all classification results with probabilities (only present for image requests)
-- **isNSFW**: Boolean indicating if content is considered NSFW (threshold: 0.5 for images, true if profanity detected for text)
+- **isNSFW**: Boolean indicating if image content is considered NSFW (threshold: 0.5)
 - **confidence**: Highest probability among NSFW categories (Porn, Sexy, Hentai) - only present for image requests
+
+**Text Detection Fields:**
+- **isProfanity**: Boolean indicating if profanity was detected in the text
 - **profanity**: Array of detected profane words - only present for text requests
+
+**Common Fields:**
 - **processingTime**: Time taken to process the content in milliseconds
-- **type**: "image" for image-only requests, "text" for text-only requests, "both" for combined requests
 
 #### Combined Detection
 
 When both image and text are processed in the same request:
-- **isNSFW** is `true` if either the image is classified as NSFW OR profanity is detected in the text
+- Both **isNSFW** and **isProfanity** fields are included separately
 - Both **predictions** and **profanity** fields are included in the response
 - **confidence** field is included from image processing
 
