@@ -9,7 +9,7 @@
  * - Uses string-comparisons package (Jaccard similarity) for fuzzy string matching
  * - Matches whole words only (not substrings within words)
  * - Detects profanity even with character substitutions or typos
- * - Returns both detected bad words and an overall profanity score (0-1)
+ * - Returns original profanity words from the text (not dictionary words) and an overall profanity score (0-1)
  * - Configurable similarity threshold (default: 0.75)
  * 
  * Usage:
@@ -93,6 +93,17 @@ function extractWords(text: string): string[] {
     .filter(word => word.length > 0);
 }
 
+// Extract words with their original forms preserved
+function extractWordsWithOriginal(text: string): { normalized: string; original: string }[] {
+  return text
+    .split(/\s+/)
+    .map(word => ({
+      normalized: normalizeWord(word),
+      original: word
+    }))
+    .filter(item => item.normalized.length > 0);
+}
+
 // Calculate toxicity score for a single word against bad words dictionary
 function wordToxicity(word: string, badWords: string[]): number {
   if (word.length === 0) return 0;
@@ -114,15 +125,16 @@ function calculateTextToxicity(text: string, badWords: string[]): number {
 // Enhanced profanity checker with similarity matching (whole words only)
 function checkProfanity(text: string, profanityWords: string[], threshold: number = PROFANITY_THRESHOLD): { words: string[]; score: number } {
   const detectedWords: string[] = [];
-  const words = extractWords(text);
+  const words = extractWordsWithOriginal(text);
   
   // Compare each word as a whole unit against the profanity list
-  for (const word of words) {
+  for (const wordInfo of words) {
     for (const badWord of profanityWords) {
-      const similarity = StringComparisons.Jaccard.similarity(word, badWord);
+      const similarity = StringComparisons.Jaccard.similarity(wordInfo.normalized, badWord);
       if (similarity >= threshold) {
-        if (!detectedWords.includes(badWord)) {
-          detectedWords.push(badWord);
+        // Add the original word from the text, not the dictionary word
+        if (!detectedWords.includes(wordInfo.original)) {
+          detectedWords.push(wordInfo.original);
         }
         break; // Stop checking other bad words for this word
       }
