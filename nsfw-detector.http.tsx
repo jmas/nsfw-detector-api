@@ -212,7 +212,20 @@ async function handler(req: Request): Promise<Response> {
   const startTime = Date.now();
   
   try {
-    // Only allow POST requests
+    const url = new URL(req.url);
+    
+    // Serve robots.txt
+    if (req.method === "GET" && url.pathname === "/robots.txt") {
+      return new Response(
+        "User-agent: *\nDisallow: /\n",
+        { 
+          status: 200, 
+          headers: { "Content-Type": "text/plain" } 
+        }
+      );
+    }
+    
+    // Only allow POST requests for content detection
     if (req.method !== "POST") {
       return new Response(
         JSON.stringify({ 
